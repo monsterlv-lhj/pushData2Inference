@@ -1,0 +1,17 @@
+{
+    "database": {
+        "host": "127.0.0.1",
+        "user": "root",
+        "password": "123456",
+        "database": "baohui_test",
+        "port": 3306,
+        "charset": "utf8mb4"
+    },
+    "api": {
+        "base_url": "http://127.0.0.1:5000/data/",
+        "timeout": 10
+    },
+    "schedule": {
+        "interval_seconds": 5
+    }
+}

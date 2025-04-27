@@ -1,3 +1,4 @@
+import sys
 import requests
 import json
 import time as sys_time
@@ -20,8 +21,27 @@ logging.basicConfig(
 )
 logger = logging.getLogger('数据推送服务')
 
-# 接口地址
-BASE_URL = "http://127.0.0.1:5000/data/"
+# 加载配置
+def load_config():
+    try:
+        with open('config.json', 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        logger.error(f"加载配置文件失败: {e}")
+        # 返回默认配置
+        return {
+            "database": DB_CONFIG,
+            "api": {"base_url": BASE_URL, "timeout": 10},
+            "schedule": {"interval_seconds": 5}
+        }
+
+# 使用配置
+config = load_config()
+DB_CONFIG = config['database']
+BASE_URL = config['api']['base_url']
+API_TIMEOUT = config['api']['timeout']
+SCHEDULE_INTERVAL = config['schedule']['interval_seconds']
+
 API_ENDPOINTS = {
     "ashholdmonitoringdata": BASE_URL + "ashholdmonitoringdata",
     "config": BASE_URL + "config",
@@ -31,26 +51,21 @@ API_ENDPOINTS = {
     "sysparaset": BASE_URL + "sysparaset"
 }
 
-# 配置字典---数据库连接配置
-DB_CONFIG = {
-    'host': '127.0.0.1',
-    'user': 'root',
-    'password': '123456',
-    'database': 'baohui_test',
-    'port': 3306,
-    'charset': 'utf8mb4'
-}
-
-
-def connect_to_db():
-    """连接到数据库"""
-    try:
-        # 关键字参数（kwargs）解包语法
-        connection = pymysql.connect(**DB_CONFIG)
-        return connection
-    except Exception as e:
-        logger.error(f"数据库连接失败: {e}")
-        return None
+def connect_to_db(max_retries=3, retry_interval=5):
+    """连接到数据库,带重连机制"""
+    retry_count = 0
+    while retry_count < max_retries:
+        try:
+            # 关键字参数（kwargs）解包语法
+            connection = pymysql.connect(**DB_CONFIG)
+            return connection
+        except Exception as e:
+            retry_count += 1
+            logger.error(f"数据库连接失败(尝试{retry_count}/{max_retries}):{e}")
+            if retry_count < max_retries:
+                logger.info(f"等待{retry_interval}秒后重试...")
+                sys_time.sleep(retry_interval)
+    return None
 
 
 def get_data_from_table(table_name):
@@ -295,7 +310,7 @@ def run_data_push():
 def schedule_jobs():
     """设置定时任务"""
     # 将函数注册为定时任务
-    schedule.every(5).seconds.do(run_data_push)
+    schedule.every(SCHEDULE_INTERVAL).seconds.do(run_data_push)
     logger.info("数据推送服务已启动，将每5秒执行一次")
     # 立即执行一次
     run_data_push()
