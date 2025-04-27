@@ -268,7 +268,7 @@ def push_data_to_api(table_name, data):
                 endpoint,
                 json=record,
                 verify=False,  # 不验证SSL证书
-                timeout=10  # 设置超时时间
+                timeout=API_TIMEOUT  # 设置超时时间
             )
             if response.status_code == 200:
                 logger.info(f"成功推送数据到 {endpoint}")
